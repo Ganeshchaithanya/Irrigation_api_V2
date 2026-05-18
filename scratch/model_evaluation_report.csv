@@ -1,0 +1,26 @@
+Model,Task,Accuracy,F1,Precision,Recall,MAE,RMSE,R^2,N(test)
+XGBoost Classifier,Irrigation Decision (3-class),64.53%,0.6611,0.7369,0.6453,—,—,—,11000
+XGBoost Regressor,Irrigation Duration (min),—,—,—,—,25.70 min,58.04 min,-0.0824,5041
+LSTM (1h forecast),Soil Moisture (1h),—,—,—,—,7.0710,10.5268,0.2802,10837
+LSTM (6h forecast),Soil Moisture (6h),—,—,—,—,6.6195,9.9803,0.3354,10837
+LSTM (24h forecast),Soil Moisture (24h),—,—,—,—,8.7752,13.0016,0.0547,10837
+Isolation Forest,Sensor Anomaly Detection,84.00%,0.8400,0.8000 (anom),0.8000 (anom),—,—,—,10000
+Stage-XGB  Brinjal (kharif),Crop Stage (5 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,700
+Stage-XGB  Chickpea (rabi),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Chilli (kharif),Crop Stage (5 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,700
+Stage-XGB  Cotton (kharif),Crop Stage (8 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,1120
+Stage-XGB  Cucumber (zaid),Crop Stage (5 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,700
+Stage-XGB  Groundnut (kharif),Crop Stage (8 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,1120
+Stage-XGB  Maize (kharif),Crop Stage (7 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,980
+Stage-XGB  Okra (kharif),Crop Stage (5 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,700
+Stage-XGB  Onion (rabi),Crop Stage (5 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,700
+Stage-XGB  Pearl Millet (kharif),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Pigeon Pea (kharif),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Potato (rabi),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Rice (kharif),Crop Stage (7 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,980
+Stage-XGB  Sorghum (kharif),Crop Stage (7 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,980
+Stage-XGB  Sugarcane (kharif),Crop Stage (5 classes),99.43%,0.9943,0.9943,0.9943,--,--,--,700
+Stage-XGB  Tomato (kharif),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Watermelon (zaid),Crop Stage (6 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,840
+Stage-XGB  Wheat (rabi),Crop Stage (8 classes),100.00%,1.0000,1.0000,1.0000,--,--,--,1120
+[AGGREGATE] Stage-XGB (mean),All Crops / All Seasons,99.97%,0.9997,(see rows),(see rows),--,--,--,--

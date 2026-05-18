@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+db.sqlite3
+backend/logs/
+.env
+.git/
+.gitignore
+aquasol_app/
+node_modules/

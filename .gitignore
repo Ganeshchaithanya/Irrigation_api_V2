@@ -1,0 +1,40 @@
+# ─── Python Backend Ignored Files ──────────────────────────────────────────
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+db.sqlite3
+*.log
+.env
+.idea/
+.vscode/
+
+# Large Datasets (Optional to ignore, but keeps repo under 100MB)
+dataset_lstm.json
+dataset_xgb.json
+backend/data/
+
+# ─── Flutter Mobile App Ignored Files ──────────────────────────────────────
+aquasol_app/.dart_tool/
+aquasol_app/.flutter-plugins
+aquasol_app/.flutter-plugins-dependencies
+aquasol_app/.packages
+aquasol_app/build/
+aquasol_app/ios/.symlinks/
+aquasol_app/ios/Flutter/Flutter.framework
+aquasol_app/ios/Flutter/Flutter.podspec
+aquasol_app/ios/Flutter/Generated.xcconfig
+aquasol_app/ios/Flutter/flutter_export_environment.sh
+aquasol_app/android/app/src/main/res/values/strings.xml
+aquasol_app/android/local.properties
+aquasol_app/android/key.properties
+aquasol_app/android/.gradle/
+aquasol_app/web/
+aquasol_app/macos/Flutter/ephemeral/
+aquasol_app/windows/flutter/ephemeral/
+aquasol_app/linux/flutter/ephemeral/
+aquasol_app/pubspec.lock
+.DS_Store
