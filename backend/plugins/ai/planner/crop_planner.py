@@ -74,11 +74,15 @@ def load_planner():
     global _e5_model, _groq_client
 
     if _ST_AVAILABLE:
-        logger.info("[planner] Loading multilingual-e5-large for RAG memory...")
-        _e5_model = SentenceTransformer(settings.E5_MODEL_NAME)
-        _build_guide_index()
-        logger.info(f"[planner] Indexed {len(_guide_chunks)} guide chunks "
-                    f"({'FAISS' if _faiss_index is not None else 'numpy'}).")
+        # Prevent Out-of-Memory (OOM) crashes on constrained environments like Render Free Tier (512MB limit)
+        if os.environ.get("RENDER") == "true":
+            logger.warning("[planner] Running on Render Free Tier — skipping heavy SentenceTransformer RAG indexing to prevent Out-Of-Memory (OOM) crash.")
+        else:
+            logger.info("[planner] Loading multilingual-e5-large for RAG memory...")
+            _e5_model = SentenceTransformer(settings.E5_MODEL_NAME)
+            _build_guide_index()
+            logger.info(f"[planner] Indexed {len(_guide_chunks)} guide chunks "
+                        f"({'FAISS' if _faiss_index is not None else 'numpy'}).")
     else:
         logger.warning("[planner] E5 model unavailable — RAG search disabled.")
 
