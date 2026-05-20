@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, mean_absolute_error
 
 DATASET_PATH = "backend/data/bio_dataset_xgb_decision_55k.json"
-MODELS_DIR = "backend/models"
+MODELS_DIR = "backend/models_store"
 
 def train():
     if not os.path.exists(MODELS_DIR):

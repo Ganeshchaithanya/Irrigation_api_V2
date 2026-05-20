@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from backend.plugins.ai.prediction.lstm_arch import MoistureLSTM
 
 DATASET_PATH = "backend/data/bio_dataset_lstm_55k.json"
-MODELS_DIR = "backend/models"
+MODELS_DIR = "backend/models_store"
 EPOCHS = 15 # Reduced for local training speed
 BATCH_SIZE = 32
 

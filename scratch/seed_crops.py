@@ -36,6 +36,19 @@ async def seed_crops():
                 "rrc_max": 25.0
             },
             {
+                "name": "Paddy",
+                "duration": 120,
+                "water": 1200,
+                "kc": {"initial": 1.05, "development": 1.15, "mid": 1.20, "late": 0.9, "harvest": 0.6},
+                "stages": [
+                    {"name": "Initial", "start": 0, "end": 20, "min_m": 80, "max_m": 100},
+                    {"name": "Development", "start": 21, "end": 50, "min_m": 85, "max_m": 100},
+                    {"name": "Mid-Season", "start": 51, "end": 90, "min_m": 90, "max_m": 100},
+                    {"name": "Late-Season", "start": 91, "end": 120, "min_m": 70, "max_m": 90},
+                ],
+                "rrc_max": 25.0
+            },
+            {
                 "name": "Tomato",
                 "duration": 140,
                 "water": 600,

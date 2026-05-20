@@ -66,26 +66,34 @@ def run_simulation():
 
         # 3. Discover and Assign Devices
         print("\nDiscovering and Assigning Devices...")
-        httpx.post(f"{API_URL}/discover", json={"mac": master_mac, "pairing_code": "MST001", "role": "master"}, timeout=30.0)
-        httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "MST001", "farm_id": farm_id, "node_name": "Main Controller"})
+        r = httpx.post(f"{API_URL}/discover", json={"mac": master_mac, "pairing_code": "MST001", "role": "master"}, timeout=30.0)
+        print(f"  Discover master: {r.status_code}")
+        r = httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "MST001", "farm_id": farm_id, "node_name": "Main Controller"}, timeout=30.0)
+        print(f"  Assign master: {r.status_code} - {r.text[:100]}")
         
-        httpx.post(f"{API_URL}/discover", json={"mac": node1_mac, "pairing_code": "NOD001", "role": "node"}, timeout=30.0)
-        httpx.post(f"{API_URL}/discover", json={"mac": node2_mac, "pairing_code": "NOD002", "role": "node"}, timeout=30.0)
+        r = httpx.post(f"{API_URL}/discover", json={"mac": node1_mac, "pairing_code": "NOD001", "role": "node"}, timeout=30.0)
+        print(f"  Discover node1: {r.status_code}")
+        r = httpx.post(f"{API_URL}/discover", json={"mac": node2_mac, "pairing_code": "NOD002", "role": "node"}, timeout=30.0)
+        print(f"  Discover node2: {r.status_code}")
 
         # Node slots
-        slots_resp = httpx.get(f"{API_URL}/farms/zones/{zone_id}/node_slots", headers=headers)
+        slots_resp = httpx.get(f"{API_URL}/farms/zones/{zone_id}/node_slots", headers=headers, timeout=30.0)
         slots = slots_resp.json()
+        print(f"  Node slots found: {len(slots)}")
         if len(slots) < 2:
-            s1 = httpx.post(f"{API_URL}/farms/node_slot", headers=headers, json={"zone_id": zone_id, "name": "Slot 1"}).json()
-            s2 = httpx.post(f"{API_URL}/farms/node_slot", headers=headers, json={"zone_id": zone_id, "name": "Slot 2"}).json()
+            s1 = httpx.post(f"{API_URL}/farms/node_slot", headers=headers, json={"zone_id": zone_id, "name": "Slot 1"}, timeout=30.0).json()
+            s2 = httpx.post(f"{API_URL}/farms/node_slot", headers=headers, json={"zone_id": zone_id, "name": "Slot 2"}, timeout=30.0).json()
             slot1_id = s1["id"]
             slot2_id = s2["id"]
         else:
             slot1_id = slots[0]["id"]
             slot2_id = slots[1]["id"]
+        print(f"  Using slot1={slot1_id}, slot2={slot2_id}")
 
-        httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "NOD001", "farm_id": farm_id, "zone_id": zone_id, "node_slot_id": slot1_id, "node_name": "Sensor 1"})
-        httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "NOD002", "farm_id": farm_id, "zone_id": zone_id, "node_slot_id": slot2_id, "node_name": "Sensor 2"})
+        r = httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "NOD001", "farm_id": farm_id, "zone_id": zone_id, "node_slot_id": slot1_id, "node_name": "Sensor 1"}, timeout=30.0)
+        print(f"  Assign node1: {r.status_code} - {r.text[:100]}")
+        r = httpx.post(f"{API_URL}/assign/code", headers=headers, json={"pairing_code": "NOD002", "farm_id": farm_id, "zone_id": zone_id, "node_slot_id": slot2_id, "node_name": "Sensor 2"}, timeout=30.0)
+        print(f"  Assign node2: {r.status_code} - {r.text[:100]}")
 
         print("\nProvisioning complete. Starting telemetry loop...")
         

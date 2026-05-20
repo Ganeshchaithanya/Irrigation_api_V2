@@ -1,24 +1,30 @@
-import asyncio
-import uuid
-from backend.db.session import AsyncSessionLocal
-from sqlalchemy import text
-from backend.models.farm import Farm, Zone, Acre
-from backend.models.device import Device
+import os
+from sqlalchemy import create_engine, text
 
-async def check_db():
-    async with AsyncSessionLocal() as db:
-        farms = (await db.execute(text("SELECT id, name FROM farms"))).all()
-        zones = (await db.execute(text("SELECT id, name FROM zones"))).all()
-        devices = (await db.execute(text("SELECT id, mac_address, farm_id FROM devices"))).all()
-        
-        print(f"Farms: {len(farms)}")
-        for f in farms: print(f" - {f.name} ({f.id})")
-        
-        print(f"Zones: {len(zones)}")
-        for z in zones: print(f" - {z.name} ({z.id})")
-        
-        print(f"Devices: {len(devices)}")
-        for d in devices: print(f" - {d.mac_address} (Farm: {d.farm_id})")
+db_url = "postgresql://neondb_owner:npg_Lbf9rKJHMSW3@ep-restless-meadow-a1l64nqq-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+engine = create_engine(db_url)
 
-if __name__ == "__main__":
-    asyncio.run(check_db())
+with engine.connect() as conn:
+    print("--- USERS ---")
+    for row in conn.execute(text("SELECT id, email, name, phone FROM users")):
+        print(row)
+        
+    print("\n--- FARMS ---")
+    for row in conn.execute(text("SELECT id, name, user_id FROM farms")):
+        print(row)
+        
+    print("\n--- ZONES ---")
+    for row in conn.execute(text("SELECT id, name, farm_id FROM zones")):
+        print(row)
+        
+    print("\n--- NODE SLOTS ---")
+    for row in conn.execute(text("SELECT id, name, zone_id FROM node_slots")):
+        print(row)
+
+    print("\n--- DEVICES ---")
+    for row in conn.execute(text("SELECT id, device_uid, mac_address, status, is_claimed, farm_id, node_slot_id, role, pairing_code FROM devices")):
+        print(row)
+        
+    print("\n--- PAIRING SESSIONS ---")
+    for row in conn.execute(text("SELECT id, pairing_code, farm_id, zone_id, node_slot_id, is_used, expires_at FROM pairing_sessions")):
+        print(row)
