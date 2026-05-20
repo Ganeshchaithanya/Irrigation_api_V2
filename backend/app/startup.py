@@ -10,6 +10,7 @@ from backend.plugins.ai.stage.stage_model import load_stage_models
 from backend.plugins.ai.prediction.lstm import load_lstm_model
 from backend.plugins.ai.decision.xgboost_engine import load_xgb_models
 from backend.plugins.ai.planner.crop_planner import load_planner
+from backend.services.scheduler import start_scheduler
 from backend.utils.logger import logger
 
 
@@ -61,6 +62,9 @@ async def lifespan(app: FastAPI):
     # Start MQTT Bridge listener - DISABLED for HTTP migration
     # from backend.services.mqtt_bridge import mqtt_bridge
     # asyncio.create_task(mqtt_bridge.start_listening())
+    
+    # Start the offline node monitor loop
+    start_scheduler()
     
     logger.info("AquaSol API Reachable! (Models loading in background)")
     yield

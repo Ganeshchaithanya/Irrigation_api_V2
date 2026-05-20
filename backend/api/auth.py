@@ -16,6 +16,7 @@ from typing import Dict, Any
 from backend.db.session import get_db
 from backend.models.user import User
 from backend.schemas.auth import RegisterRequest, LoginRequest, GoogleLoginRequest, TokenResponse, UserResponse
+from backend.models.farm import Farm, Zone
 from backend.config.settings import get_settings
 from backend.utils.logger import logger
 
@@ -61,8 +62,24 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     )
     db.add(user)
     try:
+        await db.flush() # flush to get user.id
+
+        # Auto-create Default Farm and Zone
+        farm = Farm(user_id=user.id, name="My Farm", location="Unknown", total_acres=1)
+        db.add(farm)
+        await db.flush() # flush to get farm.id
+
+        zone = Zone(
+            farm_id=farm.id,
+            name="Zone 1",
+            crop_type="Unknown",
+            soil_type="Loam",
+            mode="auto",
+            area_acres=1.0
+        )
+        db.add(zone)
         await db.commit()
-        # Removed db.refresh(user) to reduce round-trips
+        
         token = _create_token(user.id, user.preferred_lang)
         logger.info(f"[auth] New user registered: id={user.id} phone={user.phone}")
         return TokenResponse(access_token=token, user_id=user.id, preferred_lang=user.preferred_lang)
@@ -117,7 +134,24 @@ async def google_login(payload: GoogleLoginRequest, db: AsyncSession = Depends(g
         )
         db.add(user)
         try:
+            await db.flush() # flush to get user.id
+            
+            # Auto-create Default Farm and Zone for Google User
+            farm = Farm(user_id=user.id, name="My Farm", location="Unknown", total_acres=1)
+            db.add(farm)
+            await db.flush()
+
+            zone = Zone(
+                farm_id=farm.id,
+                name="Zone 1",
+                crop_type="Unknown",
+                soil_type="Loam",
+                mode="auto",
+                area_acres=1.0
+            )
+            db.add(zone)
             await db.commit()
+            
             await db.refresh(user)
             logger.info(f"[auth] New Google user registered: email={user.email}")
         except Exception as e:
