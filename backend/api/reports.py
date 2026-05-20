@@ -90,7 +90,9 @@ async def get_diary(
             "type": e.entry_type, "title": e.title, "description": e.body,
             "is_subsidy_relevant": e.is_subsidy_relevant,
             "subsidy_status": e.subsidy_status,
-            "payment_reference": e.payment_reference
+            "payment_reference": e.payment_reference,
+            "cost": float(e.cost or 0.0),
+            "record_data": e.record_data
         } for e in entries
     ]}
 

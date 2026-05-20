@@ -136,9 +136,7 @@ async def process_telemetry_and_decide(
                 logger.error(f"[perception] IRRIGATION VETO in zone {zone_id}: {validation['deviation']}% deficit in moisture gain.")
                 irrigation_veto = "delivery_failure"
 
-        # Check for Node Failure (Heartbeat)
-        from backend.services.health_monitor import health_monitor
-        # In v3, we check devices bound to node slots in this zone
+        # Check for Node Failure (Heartbeat & DB backup)
         node_status = "online"
         res_device = await db.execute(
             select(Device)
@@ -148,23 +146,82 @@ async def process_telemetry_and_decide(
         )
         device_row = res_device.scalar_one_or_none()
         if device_row:
-            node_status = health_monitor.get_status(device_row.mac_address)
+            # Check dynamic last_seen freshness (5 minutes threshold)
+            if device_row.last_seen_at:
+                delta = (datetime.now(timezone.utc) - device_row.last_seen_at).total_seconds() / 60
+                if delta > 5.0:
+                    node_status = "failed"
+                else:
+                    node_status = "online"
+            else:
+                node_status = "failed"
 
         uncertainty_flag = None
         trust_score = trust_initial
         if node_status == "failed":
             trust_score = 0.0
             uncertainty_flag = "node_failure"
-            logger.warning(f"[intel] Node {device_row.mac_address} FAILED. Activating Virtual Sensing for Zone {zone_id}.")
+            logger.warning(f"[intel] Node {device_row.mac_address if device_row else 'Unknown'} FAILED. Activating Virtual Sensing.")
+            
+            from backend.services.alerts import create_alert
+            # Create Node Offline Alert
+            await create_alert(
+                farm_id=str(farm_id),
+                zone_id=str(zone_id),
+                alert_type="node_failure",
+                title="📡 Node Offline Alert",
+                description=f"Device {device_row.node_label if device_row else 'Unknown'} ({device_row.mac_address if device_row else 'Unknown'}) is offline. System failing over to Virtual Sensing.",
+                db=db
+            )
         elif anomaly["is_anomaly"]:
             trust_score = settings.DRIFT_PENALTY_TRUST_SCORE
             uncertainty_flag = "sensor_drift"
+            
+            from backend.services.alerts import create_alert, build_anomaly_alert
+            # Create Sensor Anomaly Alert
+            alert_data = build_anomaly_alert(
+                node_label=device_row.node_label if device_row else "Unknown",
+                sensor="moisture",
+                value=moisture_raw,
+                anomaly_type=anomaly.get("anomaly_type") or "unknown",
+                is_virtual=False
+            )
+            await create_alert(
+                farm_id=str(farm_id),
+                zone_id=str(zone_id),
+                alert_type="anomaly",
+                title=alert_data["title"],
+                description=alert_data["description"],
+                db=db
+            )
         elif slow_drift["is_anomaly"]:
-            trust_score = settings.DRIFT_PENALTY_TRUST_SCORE * 2 # Less extreme penalty for slow drift
+            trust_score = settings.DRIFT_PENALTY_TRUST_SCORE * 2
             uncertainty_flag = "slow_drift"
+            
+            from backend.services.alerts import create_alert
+            # Create Slow Drift Alert
+            await create_alert(
+                farm_id=str(farm_id),
+                zone_id=str(zone_id),
+                alert_type="anomaly",
+                title="⚠️ Sensor Drift Warning",
+                description=f"Moisture reading on Node {device_row.node_label if device_row else 'Unknown'} shows slow drift. Recalibration recommended.",
+                db=db
+            )
         elif irrigation_veto:
             trust_score = 0.05
             uncertainty_flag = "delivery_failure"
+            
+            from backend.services.alerts import create_alert
+            # Create Delivery Failure Alert
+            await create_alert(
+                farm_id=str(farm_id),
+                zone_id=str(zone_id),
+                alert_type="anomaly",
+                title="❌ Valve Delivery Failure",
+                description=f"Irrigation run in zone {zone_id} failed to produce expected soil moisture gain. Please check valve plumbing.",
+                db=db
+            )
             
         # Recovery Logic: Gradually restore trust if reading stays dry/stable (User Request)
         if uncertainty_flag and node_status == "online" and not (anomaly["is_anomaly"] or slow_drift["is_anomaly"]):
@@ -328,7 +385,7 @@ async def process_telemetry_and_decide(
             rain_mm=rain_mm,
             trust_score=trust_score,
             last_irrigation_hours_ago=24.0,
-            hour_of_day=datetime.now(timezone.utc).hour,
+            hour_of_day=datetime.now().hour,
             current_moisture=estimated_root,
             predicted_moisture_6h=prediction.get("predicted_6h", estimated_root),
             target_moisture_min=t_min,

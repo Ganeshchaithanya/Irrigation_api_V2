@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     email: Optional[str]
     phone: Optional[str]
     preferred_lang: str
+    avatar_url: Optional[str] = None
     is_active: bool
 
     class Config:

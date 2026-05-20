@@ -177,11 +177,14 @@ async def update_profile(
         current_user.email = payload["email"]
     if "preferred_lang" in payload:
         current_user.preferred_lang = payload["preferred_lang"]
+    if "avatar_url" in payload:
+        current_user.avatar_url = payload["avatar_url"]
         
     await db.commit()
     return {"status": "success", "user": {
         "id": str(current_user.id),
         "name": current_user.name,
         "email": current_user.email,
-        "preferred_lang": current_user.preferred_lang
+        "preferred_lang": current_user.preferred_lang,
+        "avatar_url": current_user.avatar_url
     }}

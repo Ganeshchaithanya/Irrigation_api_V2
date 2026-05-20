@@ -60,6 +60,7 @@ async def text_chat(
         context=context,
         lang=lang,
         voice_out=payload.voice_mode,
+        db=db,
     )
 
     return ChatResponse(
@@ -108,6 +109,7 @@ async def voice_chat(
         context=context,
         lang=lang,
         voice_out=True,
+        db=db,
     )
 
     return ChatResponse(

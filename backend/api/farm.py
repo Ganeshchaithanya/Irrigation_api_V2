@@ -18,6 +18,8 @@ router = APIRouter(prefix="/farms", tags=["Farm Management"])
 class FarmCreate(BaseModel):
     name: str
     location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     total_acres: Optional[int] = 1
     zones_per_acre: Optional[int] = 4
     water_source: Optional[str] = None
@@ -67,6 +69,8 @@ async def create_farm(
         user_id=user_id,
         name=payload.name,
         location=payload.location,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
         total_acres=payload.total_acres,
         zones_per_acre=payload.zones_per_acre,
         water_source=payload.water_source,
@@ -197,11 +201,12 @@ async def delete_node_slot(
     if not slot:
         raise HTTPException(404, "Slot not found")
         
-    # Unlink device if any
+    # Unlink device from the slot — but keep farm_id and is_claimed intact.
+    # The device remains permanently bound to the farm even without a specific slot.
     await db.execute(
         Device.__table__.update()
         .where(Device.node_slot_id == slot_id)
-        .values(node_slot_id=None, is_claimed=False)
+        .values(node_slot_id=None)   # Only detach slot, NEVER reset is_claimed
     )
     
     await db.delete(slot)

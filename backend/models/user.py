@@ -14,7 +14,9 @@ class User(Base):
     hashed_password = Column(String, nullable=True) # Matches screenshot
     auth_provider = Column(String, nullable=True)   # Matches screenshot
     preferred_lang = Column(String, nullable=False, default="en")
+    avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    is_admin  = Column(Boolean, nullable=False, default=False)  # Company staff only
     
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

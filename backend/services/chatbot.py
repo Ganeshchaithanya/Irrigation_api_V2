@@ -83,6 +83,12 @@ AGRONOMIC GUARDRAILS (STRICT):
 - Never recommend Rice or Sugarcane if the user mentions water scarcity or limited supply.
 - If you recommend a crop, ensure it aligns with the current season ({lang_name} context).
 
+OPERATOR CAPABILITIES (NEW):
+- You have the authority to control irrigation and change zone configurations. If the user commands you to open a valve, start watering, stop watering, or configure the zone mode (auto/manual), you MUST generate a structured action tag.
+- Include the exact tag `[ACTION: {{"type": "irrigate"|"stop"|"set_mode", "zone_id": "<zone_id>", "duration_min": <minutes_if_irrigate>, "mode": "<manual|auto_if_set_mode>"}}]` at the absolute end of your reply.
+- Extract the correct `zone_id` from the FARM STATE context by matching the zone name or number mentioned by the user. If the user refers to "Zone 1", find the zone whose name or label contains "Zone 1" or matches in the context list. Do not make up a zone ID!
+- Keep the rest of your reply natural and confirm to the user that you are initiating this action.
+
 AGENTIC RAG CAPABILITIES:
 1. You have real-time access to the farm system state (sensors, stages, anomalies).
 2. You have "Expert Memory" — context provided from ICAR agricultural guides.
@@ -148,12 +154,14 @@ async def chat(
     lang: str = "en",
     voice_out: bool = False,
     conversation_history: Optional[List[Dict[str, str]]] = None,
+    db: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
-    Solu v3: Groq Brain (Llama 3.3) + Agentic RAG Memory + DB i18n.
+    Solu v3: Groq Brain (Llama 3.3) + Agentic RAG Memory + DB i18n + Autonomous Actions.
     Returns: { reply, lang, audio_path, rag_used }
     """
     from backend.services.i18n_service import get_localized_message
+    from sqlalchemy import select
 
     # ── 1. RAG Search (Agentic Retrieval) ─────────────────────────────────────
     # We perform a semantic search to ground the "Expert" reasoning.
@@ -190,6 +198,57 @@ async def chat(
     if not reply:
         # Fallback to DB-localized error message
         reply = await get_localized_message("chatbot_error_generic", lang)
+
+    # ── 3.5 Intercept and execute Actions ────────────────────────────────────
+    import re
+    action_match = re.search(r'\[ACTION:\s*({.*?})\]', reply)
+    if action_match and db is not None:
+        try:
+            action_data = json.loads(action_match.group(1))
+            action_type = action_data.get("type")
+            zone_id = action_data.get("zone_id")
+            
+            from backend.control.controller import execute_manual_override
+            from backend.models.farm import Zone
+            
+            # Verify zone exists
+            z_res = await db.execute(select(Zone).where(Zone.id == zone_id))
+            zone = z_res.scalar_one_or_none()
+            
+            if zone:
+                if action_type == "irrigate":
+                    duration = int(action_data.get("duration_min", 15))
+                    await execute_manual_override(
+                        zone_id=zone_id,
+                        farm_id=str(zone.farm_id),
+                        action="irrigate",
+                        duration_min=duration,
+                        reason="Executed by Solu AI Chatbot Agent",
+                        db=db
+                    )
+                    reply = reply.replace(action_match.group(0), "").strip()
+                    reply += f"\n\n*(Command executed: Starting irrigation on {zone.name} for {duration} minutes)*"
+                
+                elif action_type == "stop":
+                    await execute_manual_override(
+                        zone_id=zone_id,
+                        farm_id=str(zone.farm_id),
+                        action="stop",
+                        reason="Stopped by Solu AI Chatbot Agent",
+                        db=db
+                    )
+                    reply = reply.replace(action_match.group(0), "").strip()
+                    reply += f"\n\n*(Command executed: Stopped irrigation on {zone.name})*"
+                
+                elif action_type == "set_mode":
+                    target_mode = action_data.get("mode", "auto")
+                    zone.mode = target_mode
+                    await db.commit()
+                    reply = reply.replace(action_match.group(0), "").strip()
+                    reply += f"\n\n*(Command executed: Configured {zone.name} to {target_mode.upper()} mode)*"
+                    
+        except Exception as e:
+            logger.error(f"[chatbot] Failed to execute agentic action: {e}")
 
     # ── 4. TTS ───────────────────────────────────────────────────────────────
     audio_path = None

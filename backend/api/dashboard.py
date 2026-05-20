@@ -99,10 +99,17 @@ async def get_dashboard(
                 )
                 latest_nr = nr_res.scalar_one_or_none()
                 
+                # Dynamically calculate online/offline status based on last seen time
+                is_online = False
+                if n.last_seen_at:
+                    delta = (datetime.now(timezone.utc) - n.last_seen_at).total_seconds() / 60
+                    if delta < 5.0: # 5 minutes freshness window
+                        is_online = True
+                
                 node_statuses.append(NodeStatus(
                     node_label=n.node_label or "Node",
                     mac_address=n.mac_address or "PENDING",
-                    status=n.status,
+                    status="online" if is_online else "offline",
                     trust_score=n.trust_score or 1.0,
                     is_virtual=getattr(n, "is_virtual", False),
                     last_seen=n.last_seen_at,

@@ -53,9 +53,18 @@ async def discover_device(payload: DiscoverRequest, db: AsyncSession = Depends(g
             )
             db.add(device)
         else:
+            # Always update heartbeat timestamp
             device.last_seen_at = datetime.now(timezone.utc)
-            # Update pairing code if it changed (e.g. re-flashed)
-            device.pairing_code = payload.pairing_code.upper()
+            if device.is_claimed:
+                # Device is permanently bound — keep its farm/slot/claim intact.
+                # Only restore status to active (it was online before, mark it again).
+                if device.status == "discovery":
+                    device.status = "active"
+                # Never overwrite pairing_code or farm_id for a claimed device
+                logger.info(f"[discover] Claimed device {device.mac_address} checked in — keeping binding intact.")
+            else:
+                # Unclaimed device — safe to refresh pairing code if re-flashed
+                device.pairing_code = payload.pairing_code.upper()
             
         await db.commit()
         return {"status": "ok", "is_claimed": device.is_claimed}
@@ -84,6 +93,44 @@ async def get_unassigned_devices(db: AsyncSession = Depends(get_db)):
         "label": d.node_label or ("Master Gateway" if d.is_master else "Node")
     } for d in devices]
 
+@router.get("/my-devices")
+async def get_my_devices(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """App-side: Returns all devices permanently assigned to the current user's farm.
+    Used on startup/reinstall to detect that setup is already complete.
+    """
+    from backend.models.farm import Farm
+    # Get user's most recent farm
+    farm_res = await db.execute(
+        select(Farm)
+        .where(Farm.user_id == current_user.id)
+        .order_by(Farm.created_at.desc())
+        .limit(1)
+    )
+    farm = farm_res.scalar_one_or_none()
+    if not farm:
+        return []
+
+    res = await db.execute(
+        select(Device)
+        .where(Device.farm_id == farm.id, Device.is_claimed == True)
+        .order_by(Device.created_at)
+    )
+    devices = res.scalars().all()
+    return [{
+        "id": str(d.id),
+        "device_uid": d.device_uid,
+        "mac_address": d.mac_address,
+        "is_master": d.is_master,
+        "role": d.role,
+        "node_label": d.node_label,
+        "status": d.status,
+        "last_seen_at": d.last_seen_at.isoformat() if d.last_seen_at else None,
+        "farm_id": str(d.farm_id),
+    } for d in devices]
+
 @router.post("/assign")
 async def assign_device(
     payload: AssignRequest, 
@@ -98,9 +145,6 @@ async def assign_device(
         
         if not device:
             raise HTTPException(status_code=404, detail="Invalid pairing code. Device not discovered.")
-            
-        if device.is_claimed:
-            raise HTTPException(status_code=400, detail="Device is already claimed by another slot.")
 
         # 2. Validate IDs
         def safe_uuid(id_str: str) -> uuid.UUID:
@@ -110,7 +154,15 @@ async def assign_device(
         farm_id = safe_uuid(payload.farm_id)
         node_slot_id = safe_uuid(payload.node_slot_id)
 
-        # 3. Bind Device to NodeSlot
+        # 3. If already claimed — only allow re-assignment to the SAME farm (reinstall/swap scenario)
+        #    Block attempts to steal a device that belongs to a different farm entirely.
+        if device.is_claimed and device.farm_id and str(device.farm_id) != str(farm_id):
+            raise HTTPException(
+                status_code=409,
+                detail="Device is already permanently assigned to a different farm."
+            )
+
+        # 4. Bind Device to NodeSlot (first time or same-farm re-assignment)
         device.farm_id = farm_id
         device.node_slot_id = node_slot_id
         device.is_claimed = True
@@ -201,3 +253,32 @@ async def get_system_health(db: AsyncSession = Depends(get_db)):
         "online_nodes": online_count,
         "nodes": nodes
     }
+
+
+@router.get("/app/version")
+async def get_app_version():
+    """Returns the latest app version and download URL."""
+    return {
+        "version": "2.0.0",
+        "download_url": "https://irrigation-api-v2.onrender.com/api/v1/app/download"
+    }
+
+
+@router.get("/app/download")
+async def download_app():
+    """Serves the latest APK file directly to the client."""
+    import os
+    from fastapi.responses import FileResponse
+    
+    apk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app-release.apk"))
+    if not os.path.exists(apk_path):
+        raise HTTPException(
+            status_code=404, 
+            detail="APK file not found on server."
+        )
+    return FileResponse(
+        path=apk_path,
+        media_type="application/vnd.android.package-archive",
+        filename="aquasol-release.apk"
+    )
+

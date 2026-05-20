@@ -69,6 +69,26 @@ def apply_policy_rules(
         result["action_now"] = "SKIP"
         result["policy_reason"].append(f"SLA VETO: 24h rolling volume ({rolling_24h_mm}mm) breached hard cap {settings.MAX_MM_PER_24H}mm.")
         return result
+
+    # ── 0.5 AUTOMATED IRRIGATION WINDOW & DEFICIT CHECK ─────────────────
+    is_allowed_hour = (5 <= hour_of_day < 9) or (18 <= hour_of_day < 22)
+    is_moisture_low = current_moisture < target_moisture_min
+
+    if not (is_allowed_hour and is_moisture_low):
+        result["decision"] = "SKIP"
+        result["action_now"] = "SKIP"
+        result["applied_now_mm"] = 0.0
+        result["applied_now_liters"] = 0
+        result["water_required_mm"] = 0.0
+        
+        reasons = []
+        if not is_allowed_hour:
+            reasons.append(f"Hour {hour_of_day} falls outside standard automated windows (5-9 AM, 6-10 PM)")
+        if not is_moisture_low:
+            reasons.append(f"Moisture {current_moisture}% is above target threshold {target_moisture_min}%")
+            
+        result["policy_reason"].append(f"AUTOMATED VETO: {', '.join(reasons)}.")
+        return result
     
     # ── 1. Context Resolution & Biological Profile ──────────────────────
     soil_key = (soil_type or "loam").lower().replace(" ", "_")

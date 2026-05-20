@@ -18,6 +18,21 @@ async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────────────────
     logger.info("Starting AquaSol API...")
 
+    # self-healing DB ALTER to add avatar_url and is_admin to users table if missing
+    from backend.db.session import engine
+    from sqlalchemy import text
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;"))
+            # Auto-promote the AquaSol admin account
+            await conn.execute(text(
+                "UPDATE users SET is_admin = TRUE WHERE email = 'admin@aquasol.com' AND is_admin = FALSE;"
+            ))
+        logger.info("[startup] Dynamic DB self-healing: avatar_url + is_admin verified. admin@aquasol.com promoted.")
+    except Exception as dberr:
+        logger.error(f"[startup] Dynamic DB self-healing FAILED: {dberr}")
+
     async def load_models_async():
         try:
             logger.info("Loading AI models in background...")

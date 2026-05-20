@@ -79,10 +79,15 @@ async def simulate_payment(
 @router.post("/submit")
 async def submit_subsidy_claim(
     entry_id: uuid.UUID,
+    bank_name: str = None,
+    account_number: str = None,
+    ifsc_code: str = None,
+    holder_name: str = None,
     db: AsyncSession = Depends(get_db)
 ):
     """Marks an entry as submitted to the government (status: pending)."""
     from sqlalchemy import select
+    import json
     res = await db.execute(select(FarmDiaryEntry).where(FarmDiaryEntry.id == entry_id))
     entry = res.scalar_one_or_none()
     
@@ -90,7 +95,16 @@ async def submit_subsidy_claim(
         raise HTTPException(status_code=404, detail="Entry not found")
     
     entry.subsidy_status = "pending"
+    
+    # Save bank account details to JSON metadata
+    meta = json.loads(entry.record_data) if entry.record_data else {}
+    if bank_name: meta["bank_name"] = bank_name
+    if account_number: meta["account_number"] = account_number
+    if ifsc_code: meta["ifsc_code"] = ifsc_code
+    if holder_name: meta["holder_name"] = holder_name
+    entry.record_data = json.dumps(meta)
+    
     await db.commit()
     
-    logger.info(f"[subsidy] Entry {entry_id} submitted to government.")
-    return {"status": "success", "message": "Claim submitted successfully."}
+    logger.info(f"[subsidy] Entry {entry_id} submitted to government with bank details.")
+    return {"status": "success", "message": "Claim submitted successfully.", "record_data": meta}
