@@ -7,7 +7,7 @@ prefix as the other routers.
 """
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import EventSourceResponse
+from fastapi.responses import StreamingResponse as EventSourceResponse
 import asyncio
 import json
 

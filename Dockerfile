@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port FastAPI runs on
+# Rebuild trigger - updated 2026-05-21
 EXPOSE 8000
 
 # Start the application
