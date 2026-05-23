@@ -305,7 +305,7 @@ async def get_node_latest_reading(
 async def get_app_version():
     """Returns the latest app version and download URL."""
     return {
-        "version": "3.6.2+2",
+        "version": "3.7.0+1",
         "download_url": "https://irrigation-api-v2.onrender.com/api/v1/app/download"
     }
 
