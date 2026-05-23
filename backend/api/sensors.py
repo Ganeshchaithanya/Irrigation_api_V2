@@ -303,6 +303,7 @@ async def ingest_sensors(
     # 4. Finalize and Return
     if not farm_id:
         logger.info(f"[sensors] Master {batch.master_mac} is in discovery mode. Skipping intel.")
+        await db.commit()
         return {
             "status": "ok",
             "processed_count": 0,
